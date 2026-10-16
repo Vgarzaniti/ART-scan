@@ -3,6 +3,8 @@
   const closeCardBtn = document.getElementById("closeCardBtn");
   const quickSimSelect = document.getElementById("quickSimSelect");
   const scanStatus = document.getElementById("scanStatus");
+  const cameraPrompt = document.getElementById("cameraPrompt");
+  const btnStartCamera = document.getElementById("btnStartCamera");
 
   const arNombre = document.getElementById("arNombre");
   const arCodigo = document.getElementById("arCodigo");
@@ -14,12 +16,11 @@
   const arNivel = document.getElementById("arNivel");
 
   let html5QrCode = null;
-  let isScanning = false;
   let lastScannedCode = null;
 
   async function mostrarDetalleArticulo(identificador) {
     try {
-      scanStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Cargando datos de ${identificador}...`;
+      scanStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Obteniendo datos de ${identificador}...`;
       const resp = await fetch(`/api/articulos/${encodeURIComponent(identificador)}`);
       
       if (!resp.ok) {
@@ -40,14 +41,13 @@
       arCard.classList.add("active");
       scanStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--accent-emerald);"></i> Objeto fijado: <strong>${item.codigo}</strong>`;
       
-      // Feedback haptico/vibracion en celulares si esta soportado
       if (navigator.vibrate) {
         navigator.vibrate(80);
       }
     } catch (err) {
-      scanStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-rose);"></i> Código ${identificador} no registrado en inventario`;
+      scanStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-rose);"></i> Código ${identificador} no registrado`;
       setTimeout(() => {
-        scanStatus.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Buscando código en campo de visión...`;
+        scanStatus.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Apunte al código QR del artículo...`;
       }, 3000);
     }
   }
@@ -55,7 +55,7 @@
   closeCardBtn.addEventListener("click", () => {
     arCard.classList.remove("active");
     lastScannedCode = null;
-    scanStatus.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Buscando código en campo de visión...`;
+    scanStatus.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Apunte al código QR del artículo...`;
   });
 
   quickSimSelect.addEventListener("change", (e) => {
@@ -64,56 +64,77 @@
     }
   });
 
-  // Revisar si viene parametro por URL (ej: scanner.html?codigo=ART-001)
   const urlParams = new URLSearchParams(window.location.search);
   const paramCodigo = urlParams.get("codigo");
   if (paramCodigo) {
     mostrarDetalleArticulo(paramCodigo);
   }
 
-  // Inicializar Camara con Html5Qrcode
-  function iniciarCamara() {
-    html5QrCode = new Html5Qrcode("reader");
+  async function arrancarCamara() {
+    scanStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Solicitando cámara trasera...`;
+    if (cameraPrompt) cameraPrompt.style.display = "none";
 
-    const qrConfig = {
-      fps: 15,
-      qrbox: { width: 250, height: 250 },
-      aspectRatio: 1.0
-    };
+    try {
+      html5QrCode = new Html5Qrcode("reader");
 
-    html5QrCode.start(
-      { facingMode: "environment" }, // Camara trasera en celulares
-      qrConfig,
-      (decodedText) => {
-        let codigoDetectado = decodedText.trim();
-
-        // Si el QR tiene formato de URL completa (ej: http://.../scanner.html?codigo=ART-001)
-        if (codigoDetectado.includes("codigo=")) {
-          try {
-            const urlObj = new URL(codigoDetectado);
-            const extraido = urlObj.searchParams.get("codigo");
-            if (extraido) codigoDetectado = extraido;
-          } catch(e) {}
+      const config = {
+        fps: 15,
+        qrbox: (viewfinderWidth, viewfinderHeight) => {
+          const edge = Math.min(viewfinderWidth, viewfinderHeight);
+          return {
+            width: Math.floor(edge * 0.75),
+            height: Math.floor(edge * 0.75)
+          };
         }
+      };
 
-        if (codigoDetectado !== lastScannedCode) {
-          lastScannedCode = codigoDetectado;
-          mostrarDetalleArticulo(codigoDetectado);
-        }
-      },
-      () => {
-        // Ignorar errores de frame vacio durante el rastreo continuo
+      await html5QrCode.start(
+        { facingMode: { exact: "environment" } },
+        config,
+        onScanSuccess,
+        () => {}
+      );
+
+      scanStatus.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Escaneando entorno...`;
+    } catch (err) {
+      console.warn("Fallo con facingMode exact environment, intentando facingMode general:", err);
+      try {
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          { fps: 15 },
+          onScanSuccess,
+          () => {}
+        );
+        scanStatus.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Escaneando entorno...`;
+      } catch (errFallback) {
+        console.error("Error crítico al iniciar cámara:", errFallback);
+        scanStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-amber);"></i> Cámara no permitida. En Chrome/Safari habilita permisos de cámara.`;
+        if (cameraPrompt) cameraPrompt.style.display = "block";
       }
-    ).catch(err => {
-      console.warn("No se pudo iniciar cámara automáticamente:", err);
-      scanStatus.innerHTML = `<i class="fa-solid fa-camera-rotate"></i> Modo simulador activo (cámara no disponible o sin permiso).`;
-    });
+    }
   }
 
-  // Si estamos en un navegador que soporta getUserMedia, iniciamos cámara
-  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    iniciarCamara();
-  } else {
-    scanStatus.innerHTML = `<i class="fa-solid fa-circle-info"></i> Usa el selector superior para simular lecturas AR.`;
+  function onScanSuccess(decodedText) {
+    let codigoDetectado = decodedText.trim();
+
+    if (codigoDetectado.includes("codigo=")) {
+      try {
+        const urlObj = new URL(codigoDetectado);
+        const extraido = urlObj.searchParams.get("codigo");
+        if (extraido) codigoDetectado = extraido;
+      } catch(e) {}
+    }
+
+    if (codigoDetectado !== lastScannedCode) {
+      lastScannedCode = codigoDetectado;
+      mostrarDetalleArticulo(codigoDetectado);
+    }
   }
+
+  if (btnStartCamera) {
+    btnStartCamera.addEventListener("click", arrancarCamara);
+  }
+
+  // Si no requiere click explicito, intentamos directamente
+  arrancarCamara();
 });
