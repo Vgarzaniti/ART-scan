@@ -16,9 +16,13 @@
 
 Permite a los operarios:
 1. **Buscar artículos** en tiempo real por código (ej: `ART-001`), nombre o descripción técnica, obteniendo inmediatamente su **stock disponible**, **precio** y **ubicación exacta en el almacén (Pasillo, Estante, Nivel)**.
-2. **Escanear con la cámara del celular**: al apuntar a un código o etiqueta en una pieza o repisa, el sistema despliega una **tarjeta HUD flotante de Realidad Aumentada** sobre la imagen de la cámara con todos los datos actualizados del producto.
-3. **Imprimir y generar etiquetas QR**: catálogo automático para imprimir marcadores y pegarlos en cajas, pallets o componentes.
-4. **Base de Datos en Excel**: los datos provienen directamente del archivo [`datos/inventario.xlsx`](datos/inventario.xlsx), facilitando la actualización de artículos sin necesidad de configurar bases de datos complejas.
+2. **Escanear con la cámara del celular con soporte Multi-Modo**:
+   - 📷 **Modo Foto Real**: Reconocimiento por coincidencia visual directa contra el banco de fotos de las piezas reales.
+   - 🏁 **Modo Código QR**: Detección instantánea en menos de 100ms con cero margen de error.
+   - 🧠 **Modo IA**: Red neuronal convolucional MobileNet (TensorFlow.js) para clasificación en el navegador.
+3. **Tarjeta HUD AR Flotante**: Información proyectada sobre la cámara en tiempo real con feedback háptico (vibración).
+4. **Imprimir y generar etiquetas QR**: Catálogo dinámico para imprimir marcadores y pegarlos en cajas, estantes o componentes.
+5. **Base de Datos en Excel**: Los datos se leen directamente desde [`datos/inventario.xlsx`](datos/inventario.xlsx), facilitando la actualización inmediata de artículos.
 
 ---
 
@@ -46,62 +50,75 @@ Permite a los operarios:
    ```
 
 4. **Acceder a la aplicación**:
-   - Abrir en el navegador de la computadora: [http://localhost:3000](http://localhost:3000)
+   - **En la computadora**: [http://localhost:3000](http://localhost:3000)
+   - **En el celular (Cámara AR segura por Wi-Fi)**: `https://TU_IP_LOCAL:3443/scanner.html`
 
 ---
 
 ## 📱 ¿Cómo probarlo desde el celular?
 
-1. Asegúrate de que la computadora y el celular estén conectados a la **misma red Wi-Fi**.
+1. Conecta la PC y el celular a la **misma red Wi-Fi**.
 2. Averigua la dirección IP local de tu computadora:
-   - En Windows (PowerShell): `ipconfig` (busca la *Dirección IPv4*, ej: `192.168.1.45`).
+   - En Windows (PowerShell): `ipconfig` (ej: `192.168.1.11`).
 3. En el navegador del celular (Chrome / Safari), ingresa a:
    ```
-   http://TU_IP_LOCAL:3000
+   https://192.168.1.11:3443/scanner.html
    ```
-4. Ingresa a la sección **"Escáner AR"** (`/scanner.html`) y concede permisos para usar la cámara trasera.
-5. En la pantalla de tu computadora, abre la sección de **QRs** (`/qrs.html`) y apunta la cámara del teléfono hacia cualquiera de los códigos en pantalla.
-6. Verás aparecer inmediatamente la tarjeta de Realidad Aumentada con el stock, precio, ubicación física y especificaciones técnicas.
+4. Acepta el certificado autofirmado y el permiso de cámara.
+5. Elige tu modo favorito (**Foto Real**, **Código QR** o **IA**) y apunta la cámara a tu objeto o etiqueta.
 
 ---
 
-## 📁 Estructura del Proyecto
+## 📚 Documentación Técnica Detallada
+
+La documentación modular del sistema se encuentra organizada en la carpeta [`/docs`](docs/):
+
+- 📐 [**docs/arquitectura.md**](docs/arquitectura.md): Diagrama de componentes, flujo de datos y dependencias.
+- 👁️ [**docs/reconocimiento-visual.md**](docs/reconocimiento-visual.md): Explicación técnica de los 3 modos de escaneo (Foto Real, QR, IA MobileNet).
+- 🔒 [**docs/conexion-segura-https.md**](docs/conexion-segura-https.md): Configuración de certificados SSL autofirmados y permisos de cámara para iOS y Android.
+- 🔌 [**docs/api-rest.md**](docs/api-rest.md): Especificación de todos los endpoints REST expuestos por el backend.
+- 📊 [**docs/estructura-datos.md**](docs/estructura-datos.md): Columnas, tipos de datos y edición del archivo Excel de inventario.
+- 🧪 [**docs/guia-uso-pruebas.md**](docs/guia-uso-pruebas.md): Procedimiento paso a paso para validar el sistema en PC y dispositivos móviles.
+- 🔮 [**docs/roadmap-vision-computadora.md**](docs/roadmap-vision-computadora.md): Hoja de ruta para modelos YOLOv8 y anclajes espaciales WebXR.
+
+---
+
+## 📁 Estructura del Directorio
 
 ```
 ART-scan/
+├── .cert/                      # Certificados SSL para HTTPS nativo en móvil
 ├── datos/
 │   └── inventario.xlsx         # Base de datos en Excel (Hojas: Articulos, Categorias)
-├── docs/                       # Documentación técnica completa
-│   ├── arquitectura.md         # Diagrama de arquitectura y flujo de datos
-│   ├── estructura-datos.md     # Estructura de campos del Excel
-│   ├── guia-uso-pruebas.md     # Guía detallada de pruebas en PC y móvil
-│   └── roadmap-vision-computadora.md  # Hoja de ruta para reconocimiento de objetos 3D
+├── docs/                       # Documentación técnica completa en Markdown
+│   ├── api-rest.md
+│   ├── arquitectura.md
+│   ├── conexion-segura-https.md
+│   ├── estructura-datos.md
+│   ├── guia-uso-pruebas.md
+│   ├── reconocimiento-visual.md
+│   └── roadmap-vision-computadora.md
 ├── public/                     # Frontend Web (HTML5 / CSS3 / JS)
 │   ├── css/
 │   │   └── styles.css          # Estilos tipo HUD industrial y dark-mode
 │   ├── js/
 │   │   ├── app.js              # Lógica de búsqueda y renderizado de catálogo
-│   │   └── scanner.js          # Control de cámara, escaneo y tarjeta AR
+│   │   └── scanner.js          # Control de cámara, escaneo tri-modo y HUD AR
+│   ├── targets/                # Banco de 12 fotos reales de calibración
+│   ├── calibrador.html         # Panel de inspección y análisis visual de fotos
 │   ├── index.html              # Portal principal y buscador de inventario
-│   ├── scanner.html            # Visor de cámara con Realidad Aumentada (HUD)
-│   └── qrs.html                # Catálogo de códigos QR listos para imprimir
+│   ├── qrs.html                # Catálogo de códigos QR listos para imprimir
+│   └── scanner.html            # Visor de cámara con Realidad Aumentada (HUD)
 ├── scripts/
 │   └── crear_excel_datos.js    # Script para generar o reiniciar el Excel inicial
-├── server.js                   # Servidor Express y API REST
+├── server.js                   # Servidor Express con HTTP (3000) y HTTPS (3443)
 ├── package.json                # Configuración y dependencias del proyecto
-└── README.md                   # Documentación principal del repositorio
+└── README.md                   # Portada principal del repositorio
 ```
 
 ---
 
 ## 🛠️ Comandos Disponibles
 
-- `npm start`: Inicia el servidor de desarrollo y producción en el puerto `3000`.
+- `npm start`: Inicia el servidor HTTP (puerto 3000) y el servidor HTTPS seguro (puerto 3443).
 - `npm run init-db`: Regenera el archivo `datos/inventario.xlsx` con los datos de muestra iniciales.
-
----
-
-## 🔮 Futuras Mejoras (Fase 2)
-- Detección directa de objetos 3D sin código QR mediante modelos de visión por computadora (TensorFlow.js / YOLO).
-- Anclaje espacial 3D con WebXR para posicionar etiquetas virtuales fijas en el espacio físico del almacén.
-- Notificaciones de alerta de stock crítico conectadas con proveedores.
