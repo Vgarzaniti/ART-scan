@@ -22,31 +22,35 @@
   let isAiRunning = false;
   let aiInterval = null;
 
-  // Diccionario de mapeo visual MobileNet -> Artículos del inventario
+  // Diccionario de clases estrictas de ImageNet para cada artículo
   const MAPEO_VISION = [
     {
-      codigo: "ART-003", // Joystick PS4
-      keywords: ["joystick", "game controller", "remote control", "control", "hand held computer", "mouse"]
+      codigo: "ART-003", // Joystick PS4 DualShock
+      // Clases exactas de ImageNet: joystick, game controller
+      keywords: ["joystick", "game_controller", "control"]
     },
     {
-      codigo: "ART-001", // Calculadora Casio
-      keywords: ["calculator", "hand-held computer", "cellular telephone", "digital watch", "abacus"]
+      codigo: "ART-001", // Calculadora Casio fx-350MS
+      // Clases exactas de ImageNet: calculator, pocket calculator
+      keywords: ["calculator", "pocket_calculator"]
     },
     {
       codigo: "ART-004", // Auriculares Gamer
-      keywords: ["headphones", "headphone", "earphone", "microphone", "loudspeaker"]
+      // Clases exactas de ImageNet: acoustic headphones, earphones, headphone
+      keywords: ["headphone", "headphones", "earphone", "earphones", "headset"]
     },
     {
       codigo: "ART-002", // Cargador Samsung USB-C
-      keywords: ["plug", "power cord", "cable", "adapter", "charger", "switch"]
+      // Clases exactas de ImageNet: plug, power cord
+      keywords: ["power_cord", "plug", "electric_cord", "cord", "battery_charger"]
     }
   ];
 
   async function cargarModeloVision() {
     try {
       scanStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Cargando IA de visión...`;
-      mobilenetModel = await mobilenet.load();
-      scanStatus.innerHTML = `<i class="fa-solid fa-brain" style="color:var(--accent-cyan);"></i> IA de Visión activa. Apunte al objeto.`;
+      mobilenetModel = await mobilenet.load({ version: 2, alpha: 1.0 });
+      scanStatus.innerHTML = `<i class="fa-solid fa-brain" style="color:var(--accent-cyan);"></i> IA activa. Muestra el objeto centrado.`;
       iniciarBucleVision();
     } catch (e) {
       console.warn("No se pudo cargar MobileNet:", e);
@@ -58,6 +62,7 @@
     if (aiInterval) clearInterval(aiInterval);
 
     aiInterval = setInterval(async () => {
+      // Si la tarjeta ya está abierta, no sobreescribir hasta que el usuario la cierre
       if (!mobilenetModel || isAiRunning || arCard.classList.contains("active")) {
         return;
       }
@@ -67,33 +72,44 @@
 
       isAiRunning = true;
       try {
-        const predictions = await mobilenetModel.classify(videoEl, 3);
+        const predictions = await mobilenetModel.classify(videoEl, 5);
         
         if (predictions && predictions.length > 0) {
-          const topClase = predictions[0].className.toLowerCase();
-          const topProb = Math.round(predictions[0].probability * 100);
+          // Mostrar lo que la IA está viendo en tiempo real para dar visibilidad
+          const claseDetectada = predictions[0].className;
+          const probDetectada = Math.round(predictions[0].probability * 100);
 
-          for (const item of MAPEO_VISION) {
-            const matched = item.keywords.some(kw => topClase.includes(kw));
-            if (matched && topProb >= 18) {
-              mostrarDetalleArticulo(item.codigo, `IA DETECTÓ: ${predictions[0].className} (${topProb}%)`);
-              break;
+          scanStatus.innerHTML = `<i class="fa-solid fa-eye" style="color:var(--accent-cyan);"></i> Viendo: <strong>${claseDetectada.split(",")[0]}</strong> (${probDetectada}%)`;
+
+          // Buscar coincidencia en las top 3 predicciones con umbral más estricto (>= 30%)
+          for (const pred of predictions) {
+            const predClase = pred.className.toLowerCase().replace(/\s+/g, "_");
+            const predProb = Math.round(pred.probability * 100);
+
+            if (predProb < 25) continue;
+
+            for (const item of MAPEO_VISION) {
+              const coincide = item.keywords.some(kw => predClase.includes(kw));
+              if (coincide) {
+                mostrarDetalleArticulo(item.codigo, `IA DETECTÓ: ${pred.className.split(",")[0]} (${predProb}%)`);
+                return;
+              }
             }
           }
         }
       } catch (err) {
-        // Ignorar excepciones transitorias de render
+        // Ignorar excepciones transitorias
       } finally {
         isAiRunning = false;
       }
-    }, 800); // Analiza cada 800ms
+    }, 600);
   }
 
   async function mostrarDetalleArticulo(identificador, origen = "OBJETO IDENTIFICADO") {
     try {
       if (lastIdentifiedCode === identificador && arCard.classList.contains("active")) return;
 
-      scanStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Conectando con inventario...`;
+      scanStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Cargando datos...`;
       const resp = await fetch(`/api/articulos/${encodeURIComponent(identificador)}`);
       
       if (!resp.ok) throw new Error("No encontrado");
@@ -164,7 +180,6 @@
         () => {}
       );
 
-      // Una vez prendida la cámara, cargamos el modelo de visión artificial
       cargarModeloVision();
     } catch (err) {
       console.warn("Fallo cámara directa:", err);
