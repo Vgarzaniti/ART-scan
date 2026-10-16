@@ -82,6 +82,15 @@ app.get("/api/categorias", (req, res) => {
   res.json(categorias);
 });
 
+// Endpoint para obtener la lista de fotos de muestra para calibración
+app.get("/api/targets", (req, res) => {
+  const targetsDir = path.join(__dirname, "public", "targets");
+  if (!fs.existsSync(targetsDir)) return res.json([]);
+
+  const files = fs.readdirSync(targetsDir).filter(f => f.endsWith(".jpeg") || f.endsWith(".jpg"));
+  res.json(files);
+});
+
 app.get("/api/qr/:codigo", async (req, res) => {
   try {
     const { codigo } = req.params;
@@ -109,7 +118,6 @@ async function iniciarServidores() {
   const certPath = path.join(certDir, "server.crt");
 
   if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
-    console.log("Generando certificados SSL seguros para acceso móvil...");
     const pems = await selfsigned.generate(
       [{ name: "commonName", value: "ART-scan" }],
       { days: 365 }

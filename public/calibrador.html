@@ -1,0 +1,78 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ART-scan | Calibrador de Modelos Visuales</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest"></script>
+</head>
+<body>
+  <header>
+    <a href="index.html" class="brand">
+      <i class="fa-solid fa-cube text-cyan"></i>
+      <span>ART-scan Calibrador</span>
+    </a>
+    <nav>
+      <a href="scanner.html"><i class="fa-solid fa-camera"></i> Volver a Escáner</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <h2>Análisis de tus 12 Fotos para Reconocimiento</h2>
+    <p style="color:var(--text-muted); margin-bottom:1.5rem;">
+      Clasificando automáticamente cada una de las fotos que subiste para indexar sus características visuales:
+    </p>
+
+    <div id="resultsGrid" class="grid-cards">
+      <p><i class="fa-solid fa-spinner fa-spin"></i> Cargando red neuronal y analizando imágenes...</p>
+    </div>
+  </main>
+
+  <script>
+    async function analizarFotos() {
+      const grid = document.getElementById("resultsGrid");
+      const model = await mobilenet.load();
+      const resp = await fetch("/api/targets");
+      const files = await resp.json();
+
+      grid.innerHTML = "";
+
+      for (const f of files) {
+        const card = document.createElement("div");
+        card.className = "card";
+        
+        const img = document.createElement("img");
+        img.src = "targets/" + f;
+        img.style.width = "100%";
+        img.style.height = "160px";
+        img.style.objectFit = "cover";
+        img.style.borderRadius = "8px";
+        img.style.marginBottom = "0.75rem";
+
+        card.appendChild(img);
+
+        await new Promise(res => {
+          if (img.complete) res();
+          else img.onload = res;
+        });
+
+        const preds = await model.classify(img, 3);
+        const top1 = preds[0] ? `${preds[0].className.split(",")[0]} (${Math.round(preds[0].probability*100)}%)` : "Desconocido";
+
+        const info = document.createElement("div");
+        info.innerHTML = `
+          <div style="font-weight:700; font-size:0.9rem; margin-bottom:0.25rem;">${f}</div>
+          <div style="font-size:0.8rem; color:var(--accent-cyan);">IA Detectó: <strong>${top1}</strong></div>
+        `;
+        card.appendChild(info);
+        grid.appendChild(card);
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", analizarFotos);
+  </script>
+</body>
+</html>
