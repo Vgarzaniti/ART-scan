@@ -1,5 +1,18 @@
 ﻿const XLSX = require("xlsx");
 const path = require("path");
+const fs = require("fs");
+
+const outDir = path.join(__dirname, "..", "datos");
+const outPath = path.join(outDir, "inventario.xlsx");
+
+if (process.argv.includes("--if-missing") && fs.existsSync(outPath)) {
+  console.log("Base de datos Excel ya existente en:", outPath);
+  process.exit(0);
+}
+
+if (!fs.existsSync(outDir)) {
+  fs.mkdirSync(outDir, { recursive: true });
+}
 
 const articulos = [
   {
@@ -37,14 +50,14 @@ const articulos = [
     codigo: "ART-003",
     nombre: "Joystick Sony DualShock 4 PS4 Negro",
     categoria: "Control y Telemando",
-    stock: 4,
+    stock: 5,
     precio: 65.00,
     moneda: "USD",
     pasillo: "B",
     estante: "02",
     nivel: "3",
     descripcion: "Controlador inalambrico con panel tactil y sensores de movimiento de 6 ejes, apto para teleoperacion y simuladores.",
-    estado: "Stock Critico",
+    estado: "Stock Bajo",
     proveedor: "Sony PlayStation"
   },
   {
@@ -78,6 +91,5 @@ XLSX.utils.book_append_sheet(wb, wsArticulos, "Articulos");
 const wsCategorias = XLSX.utils.json_to_sheet(categorias);
 XLSX.utils.book_append_sheet(wb, wsCategorias, "Categorias");
 
-const outPath = path.join(__dirname, "..", "datos", "inventario.xlsx");
 XLSX.writeFile(wb, outPath);
-console.log("Excel actualizado con los articulos reales en:", outPath);
+console.log("Excel de inventario inicializado en:", outPath);

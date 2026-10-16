@@ -1,9 +1,10 @@
-{
+﻿{
   "name": "art-scan",
   "version": "1.0.0",
   "description": "MVP de Realidad Aumentada y Gestion de Inventario para Industria 4.0",
   "main": "server.js",
   "scripts": {
+    "postinstall": "node scripts/crear_excel_datos.js --if-missing",
     "start": "node server.js",
     "init-db": "node scripts/crear_excel_datos.js"
   },

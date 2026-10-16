@@ -2,6 +2,7 @@
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
+const os = require("os");
 const http = require("http");
 const https = require("https");
 const XLSX = require("xlsx");
@@ -16,6 +17,26 @@ const EXCEL_PATH = path.join(__dirname, "datos", "inventario.xlsx");
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
+
+// Detectar IP local de la red Wi-Fi / LAN automáticamente
+function obtenerIpLocal() {
+  const interfaces = os.networkInterfaces();
+  let ipPreferida = "localhost";
+
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === "IPv4" && !iface.internal) {
+        if (!iface.address.startsWith("169.254.") && !iface.address.startsWith("172.")) {
+          ipPreferida = iface.address;
+          if (name.toLowerCase().includes("wi-fi") || name.toLowerCase().includes("wlan")) {
+            return iface.address;
+          }
+        }
+      }
+    }
+  }
+  return ipPreferida;
+}
 
 function leerInventario() {
   try {
@@ -89,7 +110,6 @@ app.get("/api/articulos/:identificador", (req, res) => {
   res.json(articulo);
 });
 
-// Endpoint para modificar stock y estado directamente en el Excel
 app.patch("/api/articulos/:identificador/stock", (req, res) => {
   const { identificador } = req.params;
   const { delta, nuevoStock, nuevoEstado } = req.body;
@@ -111,14 +131,12 @@ app.patch("/api/articulos/:identificador/stock", (req, res) => {
 
   const art = articulos[index];
 
-  // Aplicar suma/resta o fijación directa
   if (typeof delta === "number") {
     art.stock = Math.max(0, Number(art.stock || 0) + delta);
   } else if (typeof nuevoStock === "number") {
     art.stock = Math.max(0, nuevoStock);
   }
 
-  // Actualizar estado si viene especificado o auto-calcular según stock
   if (nuevoEstado) {
     art.estado = nuevoEstado;
   } else {
@@ -156,7 +174,8 @@ app.get("/api/targets", (req, res) => {
 app.get("/api/qr/:codigo", async (req, res) => {
   try {
     const { codigo } = req.params;
-    const urlEscaneo = `${req.protocol}://${req.get("host")}/scanner.html?codigo=${encodeURIComponent(codigo)}`;
+    const ipLocal = obtenerIpLocal();
+    const urlEscaneo = `https://${ipLocal}:${HTTPS_PORT}/scanner.html?codigo=${encodeURIComponent(codigo)}`;
     const qrDataUrl = await QRCode.toDataURL(urlEscaneo, {
       errorCorrectionLevel: "H",
       margin: 2,
@@ -171,6 +190,11 @@ app.get("/api/qr/:codigo", async (req, res) => {
 });
 
 async function iniciarServidores() {
+  // Asegurar que exista el Excel antes de levantar
+  if (!fs.existsSync(EXCEL_PATH)) {
+    require("./scripts/crear_excel_datos.js");
+  }
+
   const certDir = path.join(__dirname, ".cert");
   if (!fs.existsSync(certDir)) {
     fs.mkdirSync(certDir, { recursive: true });
@@ -194,15 +218,22 @@ async function iniciarServidores() {
     cert: fs.readFileSync(certPath)
   };
 
-  http.createServer(app).listen(HTTP_PORT, "0.0.0.0", () => {
-    console.log(`[HTTP]  http://localhost:${HTTP_PORT}`);
-  });
+  const ipLocal = obtenerIpLocal();
 
-  https.createServer(httpsOptions, app).listen(HTTPS_PORT, "0.0.0.0", () => {
-    console.log(`====================================================`);
-    console.log(` [HTTPS SEGURO NATIVO]`);
-    console.log(` Acceso desde móvil: https://10.10.20.98:${HTTPS_PORT}/scanner.html`);
-    console.log(`====================================================`);
+  http.createServer(app).listen(HTTP_PORT, "0.0.0.0", () => {
+    https.createServer(httpsOptions, app).listen(HTTPS_PORT, "0.0.0.0", () => {
+      console.log(`\n=============================================================`);
+      console.log(` 🚀 ART-scan INICIADO CORRECTAMENTE (PC + CELULAR)`);
+      console.log(`=============================================================`);
+      console.log(` 💻 Acceso en Computadora (PC):`);
+      console.log(`    -> Inventario:    http://localhost:${HTTP_PORT}`);
+      console.log(`    -> Generador QRs: http://localhost:${HTTP_PORT}/qrs.html`);
+      console.log(`-------------------------------------------------------------`);
+      console.log(` 📱 Acceso en Celular (Misma red Wi-Fi con Cámara AR):`);
+      console.log(`    -> Escáner AR:    https://${ipLocal}:${HTTPS_PORT}/scanner.html`);
+      console.log(`    -> Catálogo Web:  https://${ipLocal}:${HTTPS_PORT}`);
+      console.log(`=============================================================\n`);
+    });
   });
 }
 

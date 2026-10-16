@@ -1,6 +1,6 @@
 ﻿# ART-scan - Realidad Aumentada & Inventario Inteligente (Industria 4.0)
 
-> Prototipo MVP para localización de inventario, consulta técnica y visualización en tiempo real mediante Realidad Aumentada (WebAR) utilizando como fuente de datos una planilla Excel en almacén.
+> Prototipo MVP para localización de inventario, control de stock bidireccional y visualización en tiempo real mediante Realidad Aumentada (WebAR) utilizando como base de datos una planilla Excel en almacén (`/datos/inventario.xlsx`).
 
 ---
 
@@ -10,115 +10,86 @@
 
 ---
 
-## 💡 ¿Qué es ART-scan?
+## ⚡ Instalación y Ejecución (En 2 Comandos)
 
-**ART-scan** es un sistema web concebido para entornos de **Industria 4.0** (almacenes, depósitos logísticos, plantas de producción y talleres de mantenimiento).
+El sistema está diseñado para configurarse e iniciarse de forma 100% automática tanto para **computadora** como para **celular**:
 
-Permite a los operarios:
-1. **Buscar artículos** en tiempo real por código (ej: `ART-001`), nombre o descripción técnica, obteniendo inmediatamente su **stock disponible**, **precio** y **ubicación exacta en el almacén (Pasillo, Estante, Nivel)**.
-2. **Escanear con la cámara del celular con soporte Multi-Modo**:
-   - 📷 **Modo Foto Real**: Reconocimiento por coincidencia visual directa contra el banco de fotos de las piezas reales.
-   - 🏁 **Modo Código QR**: Detección instantánea en menos de 100ms con cero margen de error.
-   - 🧠 **Modo IA**: Red neuronal convolucional MobileNet (TensorFlow.js) para clasificación en el navegador.
-3. **Tarjeta HUD AR Flotante**: Información proyectada sobre la cámara en tiempo real con feedback háptico (vibración).
-4. **Imprimir y generar etiquetas QR**: Catálogo dinámico para imprimir marcadores y pegarlos en cajas, estantes o componentes.
-5. **Base de Datos en Excel**: Los datos se leen directamente desde [`datos/inventario.xlsx`](datos/inventario.xlsx), facilitando la actualización inmediata de artículos.
-
----
-
-## 🚀 Instalación y Puesta en Marcha
-
-### Prerrequisitos
-- [Node.js](https://nodejs.org/) (versión 18 o superior recomendada).
-
-### Pasos de Instalación
-
-1. **Clonar el repositorio**:
-   ```bash
-   git clone https://github.com/Vgarzaniti/ART-scan.git
-   cd ART-scan
-   ```
-
-2. **Instalar dependencias**:
-   ```bash
-   npm install
-   ```
-
-3. **Iniciar la aplicación**:
-   ```bash
-   npm start
-   ```
-
-4. **Acceder a la aplicación**:
-   - **En la computadora**: [http://localhost:3000](http://localhost:3000)
-   - **En el celular (Cámara AR segura por Wi-Fi)**: `https://TU_IP_LOCAL:3443/scanner.html`
-
----
-
-## 📱 ¿Cómo probarlo desde el celular?
-
-1. Conecta la PC y el celular a la **misma red Wi-Fi**.
-2. Averigua la dirección IP local de tu computadora:
-   - En Windows (PowerShell): `ipconfig` (ej: `192.168.1.11`).
-3. En el navegador del celular (Chrome / Safari), ingresa a:
-   ```
-   https://192.168.1.11:3443/scanner.html
-   ```
-4. Acepta el certificado autofirmado y el permiso de cámara.
-5. Elige tu modo favorito (**Foto Real**, **Código QR** o **IA**) y apunta la cámara a tu objeto o etiqueta.
-
----
-
-## 📚 Documentación Técnica Detallada
-
-La documentación modular del sistema se encuentra organizada en la carpeta [`/docs`](docs/):
-
-- 📐 [**docs/arquitectura.md**](docs/arquitectura.md): Diagrama de componentes, flujo de datos y dependencias.
-- 👁️ [**docs/reconocimiento-visual.md**](docs/reconocimiento-visual.md): Explicación técnica de los 3 modos de escaneo (Foto Real, QR, IA MobileNet).
-- 🔒 [**docs/conexion-segura-https.md**](docs/conexion-segura-https.md): Configuración de certificados SSL autofirmados y permisos de cámara para iOS y Android.
-- 🔌 [**docs/api-rest.md**](docs/api-rest.md): Especificación de todos los endpoints REST expuestos por el backend.
-- 📊 [**docs/estructura-datos.md**](docs/estructura-datos.md): Columnas, tipos de datos y edición del archivo Excel de inventario.
-- 🧪 [**docs/guia-uso-pruebas.md**](docs/guia-uso-pruebas.md): Procedimiento paso a paso para validar el sistema en PC y dispositivos móviles.
-- 🔮 [**docs/roadmap-vision-computadora.md**](docs/roadmap-vision-computadora.md): Hoja de ruta para modelos YOLOv8 y anclajes espaciales WebXR.
-
----
-
-## 📁 Estructura del Directorio
-
+### 1. Instalar Todo (Un solo comando)
+Descarga todas las dependencias (servidor, lector Excel, generador QR, certificados SSL) y verifica/crea la base de datos Excel automáticamente:
+```bash
+npm install
 ```
-ART-scan/
-├── .cert/                      # Certificados SSL para HTTPS nativo en móvil
-├── datos/
-│   └── inventario.xlsx         # Base de datos en Excel (Hojas: Articulos, Categorias)
-├── docs/                       # Documentación técnica completa en Markdown
-│   ├── api-rest.md
-│   ├── arquitectura.md
-│   ├── conexion-segura-https.md
-│   ├── estructura-datos.md
-│   ├── guia-uso-pruebas.md
-│   ├── reconocimiento-visual.md
-│   └── roadmap-vision-computadora.md
-├── public/                     # Frontend Web (HTML5 / CSS3 / JS)
-│   ├── css/
-│   │   └── styles.css          # Estilos tipo HUD industrial y dark-mode
-│   ├── js/
-│   │   ├── app.js              # Lógica de búsqueda y renderizado de catálogo
-│   │   └── scanner.js          # Control de cámara, escaneo tri-modo y HUD AR
-│   ├── targets/                # Banco de 12 fotos reales de calibración
-│   ├── calibrador.html         # Panel de inspección y análisis visual de fotos
-│   ├── index.html              # Portal principal y buscador de inventario
-│   ├── qrs.html                # Catálogo de códigos QR listos para imprimir
-│   └── scanner.html            # Visor de cámara con Realidad Aumentada (HUD)
-├── scripts/
-│   └── crear_excel_datos.js    # Script para generar o reiniciar el Excel inicial
-├── server.js                   # Servidor Express con HTTP (3000) y HTTPS (3443)
-├── package.json                # Configuración y dependencias del proyecto
-└── README.md                   # Portada principal del repositorio
+
+### 2. Levantar Todo para PC y Celular (Un solo comando)
+Inicia simultáneamente el servidor web para PC (`HTTP :3000`), genera los certificados de seguridad para habilitar la cámara móvil y levanta el servidor seguro para celulares (`HTTPS :3443`), mostrando en consola la dirección IP exacta de tu red Wi-Fi:
+```bash
+npm start
+```
+
+Al ejecutar `npm start`, verás en tu terminal un cuadro con los enlaces listos para abrir:
+```text
+=============================================================
+ 🚀 ART-scan INICIADO CORRECTAMENTE (PC + CELULAR)
+=============================================================
+ 💻 Acceso en Computadora (PC):
+    -> Inventario:    http://localhost:3000
+    -> Generador QRs: http://localhost:3000/qrs.html
+-------------------------------------------------------------
+ 📱 Acceso en Celular (Misma red Wi-Fi con Cámara AR):
+    -> Escáner AR:    https://TU_IP_WIFI:3443/scanner.html
+    -> Catálogo Web:  https://TU_IP_WIFI:3443
+=============================================================
 ```
 
 ---
 
-## 🛠️ Comandos Disponibles
+## 💡 ¿Qué incluye y cómo funciona ART-scan?
 
-- `npm start`: Inicia el servidor HTTP (puerto 3000) y el servidor HTTPS seguro (puerto 3443).
-- `npm run init-db`: Regenera el archivo `datos/inventario.xlsx` con los datos de muestra iniciales.
+1. **Buscador Web y Control de Stock en Tiempo Real (`/index.html`)**:
+   - Busca artículos por código (`ART-001`), nombre o descripción.
+   - Muestra su **ubicación física exacta (Pasillo, Estante, Nivel)**, precio y estado.
+   - Permite **sumar (+), restar (-) stock o cambiar el estado** impactando directamente en el archivo [`datos/inventario.xlsx`](datos/inventario.xlsx).
+
+2. **Visor de Realidad Aumentada Multi-Modo (`/scanner.html`)**:
+   - **Modo Foto Real**: Compara en vivo lo que enfoca la cámara contra el banco de fotos reales cargadas en `/public/targets/`.
+   - **Modo Código QR**: Lectura industrial instantánea (<100ms) con cero margen de error.
+   - **Modo IA**: Clasificación de objetos con TensorFlow.js + MobileNet en el navegador.
+   - **Panel Inferior AR (Bottom Sheet)**: Despliega la información sin tapar el objeto en pantalla y permite descontar o sumar unidades en el Excel directamente desde la cámara.
+
+3. **Centro de Generación e Impresión de QRs (`/qrs.html`)**:
+   - Genera etiquetas con códigos QR para cada artículo del Excel.
+   - Permite seleccionar **1, 2, varios o todos** los artículos, elegir la **cantidad de copias** de cada etiqueta e imprimirlas listas para recortar.
+
+---
+
+## 📱 Cómo conectar el Celular (Android e iOS)
+
+1. Conecta tu computadora y tu celular a la **misma red Wi-Fi**.
+2. Ejecuta `npm start` en la computadora y copia la URL que aparece bajo **`📱 Acceso en Celular`** (ejemplo: `https://10.10.20.98:3443/scanner.html`).
+3. Ábrela en el navegador de tu teléfono (Chrome en Android o Safari en iPhone).
+4. Como el certificado HTTPS es generado localmente por tu PC, acepta el aviso de seguridad la primera vez:
+   - **En Chrome (Android)**: Toca *"Configuración avanzada"* -> *"Acceder a ... (no seguro)"*.
+   - **En Safari (iOS)**: Toca *"Mostrar detalles"* -> *"Visitar este sitio web"*.
+5. Concede permiso para utilizar la cámara trasera.
+
+---
+
+## 📚 Documentación Técnica en `/docs`
+
+Toda la arquitectura y especificaciones se encuentran documentadas en la carpeta [`/docs`](docs/):
+
+- 📐 [**docs/arquitectura.md**](docs/arquitectura.md): Diagrama de componentes y flujo de datos.
+- 👁️ [**docs/reconocimiento-visual.md**](docs/reconocimiento-visual.md): Funcionamiento de los 3 modos de escaneo (Foto Real, QR, IA MobileNet).
+- 🔒 [**docs/conexion-segura-https.md**](docs/conexion-segura-https.md): Certificados SSL autofirmados y permisos de cámara móvil.
+- 🔌 [**docs/api-rest.md**](docs/api-rest.md): Endpoints REST de consulta y modificación de stock (`GET`, `PATCH`).
+- 📊 [**docs/estructura-datos.md**](docs/estructura-datos.md): Estructura de hojas y columnas del archivo Excel.
+- 🧪 [**docs/guia-uso-pruebas.md**](docs/guia-uso-pruebas.md): Guía paso a paso para pruebas en PC y celular.
+- 🔮 [**docs/roadmap-vision-computadora.md**](docs/roadmap-vision-computadora.md): Evolución hacia YOLOv8 y WebXR.
+
+---
+
+## 🛠️ Comandos Adicionales
+
+- `npm install`: Instala todo el entorno y prepara la base de datos si no existe.
+- `npm start`: Levanta simultáneamente el servidor HTTP (PC) y HTTPS (Celular).
+- `npm run init-db`: Restaura el archivo `datos/inventario.xlsx` a sus valores originales de fábrica.
