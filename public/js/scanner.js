@@ -12,26 +12,27 @@
 
   const arNombre = document.getElementById("arNombre");
   const arCodigo = document.getElementById("arCodigo");
-  const arDesc = document.getElementById("arDesc");
-  const arStock = document.getElementById("arStock");
+  const arStockNum = document.getElementById("arStockNum");
+  const arEstadoSelect = document.getElementById("arEstadoSelect");
   const arPrecio = document.getElementById("arPrecio");
   const arPasillo = document.getElementById("arPasillo");
   const arEstante = document.getElementById("arEstante");
   const arNivel = document.getElementById("arNivel");
 
+  const btnSumarStock = document.getElementById("btnSumarStock");
+  const btnRestarStock = document.getElementById("btnRestarStock");
+
   const canvas = document.getElementById("photoCompareCanvas");
   const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
   let html5QrCode = null;
-  let activeMode = "foto"; // 'foto', 'qr', 'ia'
-  let lastIdentifiedCode = null;
+  let activeMode = "foto";
+  let currentArticleCode = null;
   let loopInterval = null;
 
-  // IA MobileNet
   let mobilenetModel = null;
   let isAiRunning = false;
 
-  // Plantillas de fotos reales cargadas
   const TARGETS = [
     { codigo: "ART-003", name: "Joystick PS4", src: "targets/joystick.jpg", sig: null },
     { codigo: "ART-001", name: "Calculadora Casio", src: "targets/calculadora.jpg", sig: null },
@@ -39,7 +40,6 @@
     { codigo: "ART-002", name: "Cargador Samsung", src: "targets/cargador.jpg", sig: null }
   ];
 
-  // Preprocesar huella visual de cada foto real
   function calcularFirmaImagen(imgEl) {
     const s = 32;
     canvas.width = s;
@@ -57,7 +57,6 @@
     }
     avg /= (s * s);
 
-    // Hash binario de gradiente de bordes
     let hash = [];
     for (let i = 0; i < luma.length; i++) {
       hash.push(luma[i] >= avg ? 1 : 0);
@@ -76,13 +75,11 @@
     });
   }
 
-  // Comparar cuadro de la cámara con las fotos reales
   function compararConFotosReales(videoEl) {
     const s = 32;
     canvas.width = s;
     canvas.height = s;
     
-    // Tomar el área central del video (la retícula)
     const vw = videoEl.videoWidth || 640;
     const vh = videoEl.videoHeight || 480;
     const cropSize = Math.min(vw, vh) * 0.7;
@@ -117,7 +114,7 @@
       for (let i = 0; i < frameHash.length; i++) {
         if (frameHash[i] === target.sig.hash[i]) iguales++;
       }
-      const sim = iguales / frameHash.length; // 0.0 a 1.0
+      const sim = iguales / frameHash.length;
 
       if (sim > maxSimilitud) {
         maxSimilitud = sim;
@@ -130,13 +127,11 @@
       scanStatus.innerHTML = `<i class="fa-solid fa-camera"></i> Comparando: <strong>${mejorMatch.name}</strong> (${pct}%)`;
     }
 
-    // Umbral de coincidencia con la foto original (>= 68%)
     if (mejorMatch && maxSimilitud >= 0.68) {
-      mostrarDetalleArticulo(mejorMatch.codigo, `COINCIDENCIA FOTOGRÁFICA (${pct}%)`);
+      mostrarDetalleArticulo(mejorMatch.codigo, `FOTO REAL (${pct}%)`);
     }
   }
 
-  // Bucle activo según el modo elegido
   function iniciarBucleDeteccion() {
     if (loopInterval) clearInterval(loopInterval);
 
@@ -161,7 +156,7 @@
       if (preds && preds.length > 0) {
         const top = preds[0];
         const prob = Math.round(top.probability * 100);
-        scanStatus.innerHTML = `<i class="fa-solid fa-brain"></i> IA Viendo: <strong>${top.className.split(",")[0]}</strong> (${prob}%)`;
+        scanStatus.innerHTML = `<i class="fa-solid fa-brain"></i> IA: <strong>${top.className.split(",")[0]}</strong> (${prob}%)`;
 
         const MAPEO = [
           { cod: "ART-003", kws: ["joystick", "game_controller", "control"] },
@@ -184,55 +179,88 @@
 
   async function mostrarDetalleArticulo(identificador, origen = "OBJETO IDENTIFICADO") {
     try {
-      if (lastIdentifiedCode === identificador && arCard.classList.contains("active")) return;
+      if (currentArticleCode === identificador && arCard.classList.contains("active")) return;
 
       const resp = await fetch(`/api/articulos/${encodeURIComponent(identificador)}`);
       if (!resp.ok) return;
 
       const item = await resp.json();
-      lastIdentifiedCode = identificador;
+      currentArticleCode = item.codigo;
 
-      arTag.innerHTML = `<i class="fa-solid fa-layer-group"></i> ${origen}`;
+      arTag.innerHTML = `<i class="fa-solid fa-check"></i> ${origen}`;
       arNombre.textContent = item.nombre;
       arCodigo.textContent = item.codigo;
-      arDesc.textContent = item.descripcion || "Sin descripción";
-      arStock.textContent = `${item.stock} unidades`;
+      arStockNum.textContent = item.stock;
+      arEstadoSelect.value = item.estado || "Disponible";
       arPrecio.textContent = `$${Number(item.precio).toFixed(2)} ${item.moneda || "USD"}`;
       arPasillo.textContent = item.pasillo || "-";
       arEstante.textContent = item.estante || "-";
       arNivel.textContent = item.nivel || "-";
 
       arCard.classList.add("active");
-      scanStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--accent-emerald);"></i> Reconocido: <strong>${item.nombre}</strong>`;
+      scanStatus.innerHTML = `<i class="fa-solid fa-circle-check" style="color:var(--accent-emerald);"></i> ${item.nombre}`;
 
       if (navigator.vibrate) navigator.vibrate([80, 50, 80]);
     } catch (err) {}
   }
 
+  // Modificar stock en Excel en tiempo real
+  async function actualizarStockEnExcel(delta, nuevoEstado = null) {
+    if (!currentArticleCode) return;
+
+    try {
+      scanStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Guardando en Excel...`;
+      
+      const payload = {};
+      if (typeof delta === "number") payload.delta = delta;
+      if (nuevoEstado) payload.nuevoEstado = nuevoEstado;
+
+      const resp = await fetch(`/api/articulos/${encodeURIComponent(currentArticleCode)}/stock`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if (!resp.ok) throw new Error("Error en servidor");
+
+      const data = await resp.json();
+      arStockNum.textContent = data.articulo.stock;
+      arEstadoSelect.value = data.articulo.estado;
+
+      scanStatus.innerHTML = `<i class="fa-solid fa-floppy-disk" style="color:var(--accent-emerald);"></i> Guardado en Excel: Stock ${data.articulo.stock}`;
+      if (navigator.vibrate) navigator.vibrate(50);
+    } catch (e) {
+      scanStatus.innerHTML = `<i class="fa-solid fa-triangle-exclamation" style="color:var(--accent-rose);"></i> Error actualizando Excel`;
+    }
+  }
+
+  btnSumarStock.addEventListener("click", () => actualizarStockEnExcel(1));
+  btnRestarStock.addEventListener("click", () => actualizarStockEnExcel(-1));
+  arEstadoSelect.addEventListener("change", (e) => actualizarStockEnExcel(null, e.target.value));
+
   closeCardBtn.addEventListener("click", () => {
     arCard.classList.remove("active");
-    lastIdentifiedCode = null;
+    currentArticleCode = null;
     scanStatus.innerHTML = `<i class="fa-solid fa-crosshairs"></i> Apunte al objeto...`;
   });
 
-  // Eventos de botones de Modo
   function setModo(nuevoModo) {
     activeMode = nuevoModo;
     [modeFotoBtn, modeQrBtn, modeIaBtn].forEach(b => b.classList.remove("active"));
 
     if (nuevoModo === "foto") {
       modeFotoBtn.classList.add("active");
-      scanStatus.innerHTML = `<i class="fa-solid fa-image"></i> Modo Foto Real activo. Apunte a su artículo.`;
+      scanStatus.innerHTML = `<i class="fa-solid fa-image"></i> Modo Foto Real activo.`;
     } else if (nuevoModo === "qr") {
       modeQrBtn.classList.add("active");
-      scanStatus.innerHTML = `<i class="fa-solid fa-qrcode"></i> Modo QR activo. Enfoque una etiqueta o código.`;
+      scanStatus.innerHTML = `<i class="fa-solid fa-qrcode"></i> Modo QR activo. Enfoque código.`;
     } else if (nuevoModo === "ia") {
       modeIaBtn.classList.add("active");
       if (!mobilenetModel) {
-        scanStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Cargando IA MobileNet...`;
+        scanStatus.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Cargando IA...`;
         mobilenet.load().then(m => {
           mobilenetModel = m;
-          scanStatus.innerHTML = `<i class="fa-solid fa-brain"></i> IA lista. Muestre el objeto.`;
+          scanStatus.innerHTML = `<i class="fa-solid fa-brain"></i> IA lista.`;
         });
       } else {
         scanStatus.innerHTML = `<i class="fa-solid fa-brain"></i> Modo IA activo.`;
@@ -270,7 +298,7 @@
                 if (ex) cod = ex;
               } catch(e) {}
             }
-            mostrarDetalleArticulo(cod, "CÓDIGO QR ESCANEADO");
+            mostrarDetalleArticulo(cod, "CÓDIGO QR");
           }
         },
         () => {}

@@ -28,10 +28,22 @@ function leerInventario() {
       categorias = XLSX.utils.sheet_to_json(wb.Sheets["Categorias"]);
     }
 
-    return { articulos, categorias };
+    return { wb, sheetNameArticulos, articulos, categorias };
   } catch (error) {
     console.error("Error al leer Excel:", error.message);
-    return { articulos: [], categorias: [] };
+    return { wb: null, sheetNameArticulos: "Articulos", articulos: [], categorias: [] };
+  }
+}
+
+function guardarInventario(wb, sheetName, articulos) {
+  try {
+    const nuevaSheet = XLSX.utils.json_to_sheet(articulos);
+    wb.Sheets[sheetName] = nuevaSheet;
+    XLSX.writeFile(wb, EXCEL_PATH);
+    return true;
+  } catch (err) {
+    console.error("Error al escribir en Excel:", err.message);
+    return false;
   }
 }
 
@@ -77,12 +89,62 @@ app.get("/api/articulos/:identificador", (req, res) => {
   res.json(articulo);
 });
 
+// Endpoint para modificar stock y estado directamente en el Excel
+app.patch("/api/articulos/:identificador/stock", (req, res) => {
+  const { identificador } = req.params;
+  const { delta, nuevoStock, nuevoEstado } = req.body;
+  const { wb, sheetNameArticulos, articulos } = leerInventario();
+
+  if (!wb) {
+    return res.status(500).json({ error: "No se pudo acceder al Excel" });
+  }
+
+  const idBuscado = identificador.trim().toLowerCase();
+  const index = articulos.findIndex(item => 
+    (item.codigo && item.codigo.toString().toLowerCase() === idBuscado) ||
+    (item.id && item.id.toString() === idBuscado)
+  );
+
+  if (index === -1) {
+    return res.status(404).json({ error: "Articulo no encontrado" });
+  }
+
+  const art = articulos[index];
+
+  // Aplicar suma/resta o fijación directa
+  if (typeof delta === "number") {
+    art.stock = Math.max(0, Number(art.stock || 0) + delta);
+  } else if (typeof nuevoStock === "number") {
+    art.stock = Math.max(0, nuevoStock);
+  }
+
+  // Actualizar estado si viene especificado o auto-calcular según stock
+  if (nuevoEstado) {
+    art.estado = nuevoEstado;
+  } else {
+    if (art.stock <= 2) art.estado = "Stock Critico";
+    else if (art.stock <= 8) art.estado = "Stock Bajo";
+    else art.estado = "Disponible";
+  }
+
+  articulos[index] = art;
+  const exito = guardarInventario(wb, sheetNameArticulos, articulos);
+
+  if (!exito) {
+    return res.status(500).json({ error: "Error escribiendo en el archivo Excel" });
+  }
+
+  res.json({
+    mensaje: "Stock y estado actualizados correctamente en Excel",
+    articulo: art
+  });
+});
+
 app.get("/api/categorias", (req, res) => {
   const { categorias } = leerInventario();
   res.json(categorias);
 });
 
-// Endpoint para obtener la lista de fotos de muestra para calibración
 app.get("/api/targets", (req, res) => {
   const targetsDir = path.join(__dirname, "public", "targets");
   if (!fs.existsSync(targetsDir)) return res.json([]);
@@ -118,6 +180,7 @@ async function iniciarServidores() {
   const certPath = path.join(certDir, "server.crt");
 
   if (!fs.existsSync(keyPath) || !fs.existsSync(certPath)) {
+    console.log("Generando certificados SSL seguros para acceso móvil...");
     const pems = await selfsigned.generate(
       [{ name: "commonName", value: "ART-scan" }],
       { days: 365 }
@@ -138,7 +201,7 @@ async function iniciarServidores() {
   https.createServer(httpsOptions, app).listen(HTTPS_PORT, "0.0.0.0", () => {
     console.log(`====================================================`);
     console.log(` [HTTPS SEGURO NATIVO]`);
-    console.log(` Acceso desde móvil: https://192.168.1.11:${HTTPS_PORT}/scanner.html`);
+    console.log(` Acceso desde móvil: https://10.10.20.98:${HTTPS_PORT}/scanner.html`);
     console.log(`====================================================`);
   });
 }

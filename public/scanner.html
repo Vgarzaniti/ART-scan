@@ -3,14 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ART-scan | Visor AR Multi-Modo</title>
+  <title>ART-scan | Visor AR & Stock</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   
-  <!-- Motor 1: Lector QR de alta velocidad -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  
-  <!-- Motor 2: IA TensorFlow.js MobileNet -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest"></script>
 
@@ -64,7 +61,7 @@
       display: flex;
       flex-direction: column;
       justify-content: space-between;
-      padding: 1rem;
+      padding: 0.8rem;
       box-sizing: border-box;
     }
 
@@ -73,7 +70,7 @@
       justify-content: space-between;
       align-items: center;
       pointer-events: auto;
-      gap: 0.5rem;
+      gap: 0.4rem;
       flex-wrap: wrap;
     }
 
@@ -82,7 +79,7 @@
       background: rgba(15, 23, 42, 0.9);
       border: 1px solid var(--border-color);
       border-radius: 999px;
-      padding: 3px;
+      padding: 2px;
       gap: 2px;
     }
 
@@ -90,9 +87,9 @@
       background: transparent;
       border: none;
       color: var(--text-muted);
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 700;
-      padding: 0.35rem 0.65rem;
+      padding: 0.3rem 0.55rem;
       border-radius: 999px;
       cursor: pointer;
       display: flex;
@@ -104,23 +101,24 @@
     .mode-tab-btn.active {
       background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
       color: #fff;
-      box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
     }
 
+    /* Retícula central libre de obstrucciones */
     .hud-reticle-box {
       align-self: center;
-      width: 260px;
-      height: 260px;
-      border: 2px dashed rgba(6, 182, 212, 0.6);
+      width: 240px;
+      height: 240px;
+      border: 2px dashed rgba(6, 182, 212, 0.5);
       border-radius: 20px;
       position: relative;
-      box-shadow: 0 0 30px rgba(6, 182, 212, 0.2);
+      box-shadow: 0 0 25px rgba(6, 182, 212, 0.15);
+      margin-top: -2rem; /* Sube la reticula para dejar el centro completamente despejado */
     }
 
     .hud-corner {
       position: absolute;
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
       border-color: var(--accent-cyan);
       border-style: solid;
     }
@@ -132,9 +130,9 @@
     .scanning-line {
       position: absolute;
       width: 100%;
-      height: 3px;
+      height: 2px;
       background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
-      box-shadow: 0 0 15px var(--accent-cyan);
+      box-shadow: 0 0 10px var(--accent-cyan);
       top: 0;
       animation: scanAnim 2.2s infinite linear;
     }
@@ -149,45 +147,105 @@
     .telemetry-banner {
       text-align: center;
       color: #fff;
-      font-size: 0.8rem;
-      padding: 0.6rem 1rem;
+      font-size: 0.75rem;
+      padding: 0.5rem 0.8rem;
       background: rgba(15, 23, 42, 0.85);
       backdrop-filter: blur(8px);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
-      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+      margin-bottom: 0.2rem;
     }
 
+    /* Cartel AR Drawer (Bottom Sheet) moderno, no tapa el visor central */
     .ar-info-card {
       position: absolute;
-      bottom: 1.5rem;
-      left: 50%;
-      transform: translateX(-50%) translateY(120%);
-      width: 90%;
-      max-width: 420px;
-      background: rgba(15, 23, 42, 0.95);
-      backdrop-filter: blur(16px);
-      border: 1px solid var(--accent-cyan);
-      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(6, 182, 212, 0.4);
-      border-radius: var(--radius-lg);
-      padding: 1.25rem;
-      z-index: 25;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      background: rgba(15, 23, 42, 0.96);
+      backdrop-filter: blur(20px);
+      border-top: 2px solid var(--accent-cyan);
+      box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.7);
+      border-radius: 20px 20px 0 0;
+      padding: 1rem 1.25rem 1.25rem 1.25rem;
+      box-sizing: border-box;
+      z-index: 30;
       pointer-events: auto;
-      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+      transform: translateY(105%);
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .ar-info-card.active {
-      transform: translateX(-50%) translateY(0%);
+      transform: translateY(0%);
     }
 
-    .ar-tag {
-      display: inline-block;
-      font-size: 0.75rem;
+    .drag-handle {
+      width: 38px;
+      height: 4px;
+      background: rgba(255, 255, 255, 0.25);
+      border-radius: 999px;
+      margin: 0 auto 0.75rem auto;
+    }
+
+    .stock-control-panel {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: 0.6rem 0.8rem;
+      margin: 0.6rem 0;
+    }
+
+    .stock-qty-display {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .btn-stock-delta {
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-secondary);
+      color: #fff;
+      font-size: 1.1rem;
       font-weight: 800;
-      color: var(--accent-cyan);
-      letter-spacing: 1px;
-      margin-bottom: 0.25rem;
-      text-transform: uppercase;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+
+    .btn-stock-delta:active {
+      transform: scale(0.92);
+      background: var(--accent-cyan);
+      color: #000;
+    }
+
+    .btn-stock-add {
+      background: rgba(16, 185, 129, 0.2);
+      border-color: rgba(16, 185, 129, 0.4);
+      color: var(--accent-emerald);
+    }
+
+    .btn-stock-sub {
+      background: rgba(244, 63, 94, 0.2);
+      border-color: rgba(244, 63, 94, 0.4);
+      color: var(--accent-rose);
+    }
+
+    .estado-select {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.35rem 0.6rem;
+      border-radius: 8px;
+      outline: none;
     }
 
     .btn-close-card {
@@ -197,8 +255,8 @@
       background: rgba(255, 255, 255, 0.1);
       border: none;
       color: #fff;
-      width: 30px;
-      height: 30px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       cursor: pointer;
       display: flex;
@@ -218,9 +276,8 @@
       text-align: center;
       z-index: 50;
       width: 85%;
-      max-width: 360px;
+      max-width: 340px;
       pointer-events: auto;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
     }
   </style>
 </head>
@@ -231,10 +288,10 @@
     <canvas id="photoCompareCanvas" width="128" height="128"></canvas>
 
     <div id="cameraPrompt" class="permission-modal" style="display:none;">
-      <i class="fa-solid fa-camera" style="font-size: 2.5rem; color: var(--accent-cyan); margin-bottom: 1rem;"></i>
-      <h3 style="margin-bottom: 0.5rem; font-size: 1.2rem;">Activar Cámara</h3>
-      <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">
-        Presiona para iniciar la cámara trasera y el reconocimiento AR.
+      <i class="fa-solid fa-camera" style="font-size: 2.2rem; color: var(--accent-cyan); margin-bottom: 0.75rem;"></i>
+      <h3 style="margin-bottom: 0.4rem; font-size: 1.1rem;">Activar Cámara</h3>
+      <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1rem;">
+        Presiona para iniciar el visor AR.
       </p>
       <button id="btnStartCamera" class="btn btn-primary" style="width: 100%;">
         <i class="fa-solid fa-play"></i> Iniciar Escáner
@@ -244,24 +301,24 @@
     <!-- HUD AR Overlay -->
     <div class="ar-hud-overlay">
       <div class="hud-header">
-        <a href="index.html" class="btn btn-secondary" style="padding: 0.4rem 0.7rem; font-size: 0.8rem;">
+        <a href="index.html" class="btn btn-secondary" style="padding: 0.35rem 0.65rem; font-size: 0.75rem;">
           <i class="fa-solid fa-arrow-left"></i>
         </a>
 
-        <!-- Selector de Modos de Escaneo -->
         <div class="mode-tabs">
-          <button id="modeFotoBtn" class="mode-tab-btn active" title="Reconoce por la forma y foto exacta de tus cosas">
-            <i class="fa-solid fa-image"></i> Foto Real
+          <button id="modeFotoBtn" class="mode-tab-btn active">
+            <i class="fa-solid fa-image"></i> Foto
           </button>
-          <button id="modeQrBtn" class="mode-tab-btn" title="Escaneo por código QR ultra veloz">
-            <i class="fa-solid fa-qrcode"></i> Código QR
+          <button id="modeQrBtn" class="mode-tab-btn">
+            <i class="fa-solid fa-qrcode"></i> QR
           </button>
-          <button id="modeIaBtn" class="mode-tab-btn" title="IA MobileNet de clasificación">
+          <button id="modeIaBtn" class="mode-tab-btn">
             <i class="fa-solid fa-brain"></i> IA
           </button>
         </div>
       </div>
 
+      <!-- Retícula despejada que no obstruye el objeto -->
       <div class="hud-reticle-box">
         <div class="hud-corner c-tl"></div>
         <div class="hud-corner c-tr"></div>
@@ -275,36 +332,49 @@
       </div>
     </div>
 
-    <!-- Tarjeta flotante interactiva de AR -->
+    <!-- Bottom Sheet AR: Información y Movimientos de Stock en Excel -->
     <div id="arCard" class="ar-info-card">
+      <div class="drag-handle"></div>
       <button id="closeCardBtn" class="btn-close-card"><i class="fa-solid fa-xmark"></i></button>
-      <span class="ar-tag" id="arTag"><i class="fa-solid fa-layer-group"></i> OBJETO IDENTIFICADO</span>
-      
-      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:0.25rem;">
-        <h3 id="arNombre" style="font-size:1.15rem; font-weight:800; color:#fff;">-</h3>
+
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.25rem;">
+        <span class="ar-tag" id="arTag" style="margin:0;"><i class="fa-solid fa-layer-group"></i> OBJETO IDENTIFICADO</span>
         <span id="arCodigo" class="card-code">-</span>
       </div>
 
-      <p id="arDesc" style="color:var(--text-muted); font-size:0.8rem; margin: 0.4rem 0 0.8rem 0; line-height: 1.3;">-</p>
+      <h3 id="arNombre" style="font-size:1.1rem; font-weight:800; color:#fff; margin-bottom:0.4rem;">-</h3>
 
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.6rem; margin-bottom: 0.8rem;">
-        <div style="background: rgba(0,0,0,0.4); padding: 0.5rem; border-radius: 8px; border-left: 3px solid var(--accent-emerald);">
-          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Stock Actual</div>
-          <div id="arStock" style="font-size: 1rem; font-weight: 800; color: #fff;">-</div>
+      <!-- Panel de Control de Stock interactivo con persistencia en Excel -->
+      <div class="stock-control-panel">
+        <button id="btnRestarStock" class="btn-stock-delta btn-stock-sub" title="Descontar 1 del Excel">-</button>
+        
+        <div class="stock-qty-display" style="text-align:center;">
+          <span style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase;">Stock en Excel</span>
+          <span id="arStockNum" style="font-size:1.35rem; font-weight:900; color:#fff;">0</span>
         </div>
 
-        <div style="background: rgba(0,0,0,0.4); padding: 0.5rem; border-radius: 8px; border-left: 3px solid var(--accent-blue);">
-          <div style="font-size: 0.65rem; color: var(--text-muted); text-transform: uppercase;">Precio</div>
-          <div id="arPrecio" style="font-size: 1rem; font-weight: 800; color: #fff;">-</div>
+        <button id="btnSumarStock" class="btn-stock-delta btn-stock-add" title="Sumar 1 al Excel">+</button>
+
+        <div style="border-left: 1px solid var(--border-color); padding-left: 0.6rem; display:flex; flex-direction:column; gap:0.2rem;">
+          <span style="font-size:0.65rem; color:var(--text-muted); text-transform:uppercase;">Estado</span>
+          <select id="arEstadoSelect" class="estado-select">
+            <option value="Disponible">Disponible</option>
+            <option value="Stock Bajo">Stock Bajo</option>
+            <option value="Stock Critico">Stock Crítico</option>
+            <option value="En Mantenimiento">En Mantenimiento</option>
+          </select>
         </div>
       </div>
 
-      <div class="location-box" style="margin-bottom: 0; padding: 0.5rem 0.8rem;">
-        <div class="location-title" style="font-size: 0.65rem;"><i class="fa-solid fa-location-dot"></i> Ubicación Asignada</div>
-        <div class="location-val" style="font-size: 0.9rem;">
-          <span>Pasillo: <strong id="arPasillo">-</strong></span>
-          <span>Estante: <strong id="arEstante">-</strong></span>
-          <span>Nivel: <strong id="arNivel">-</strong></span>
+      <!-- Ubicación y Precio compacto -->
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.8rem; background:rgba(0,0,0,0.3); padding:0.5rem 0.75rem; border-radius:8px;">
+        <div>
+          <span style="color:var(--text-muted); font-size:0.7rem;"><i class="fa-solid fa-location-dot"></i> Ubicación:</span>
+          <strong>P:<span id="arPasillo">-</span> E:<span id="arEstante">-</span> N:<span id="arNivel">-</span></strong>
+        </div>
+        <div>
+          <span style="color:var(--text-muted); font-size:0.7rem;">Precio:</span>
+          <strong id="arPrecio" style="color:var(--accent-cyan);">-</strong>
         </div>
       </div>
     </div>
