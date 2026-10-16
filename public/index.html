@@ -1,0 +1,67 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ART-scan | Gestor de Inventario & AR</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <i class="fa-solid fa-cube text-cyan"></i>
+      <span>ART-scan</span>
+      <span class="brand-badge">Industria 4.0</span>
+    </a>
+    <nav>
+      <a href="index.html" class="active"><i class="fa-solid fa-warehouse"></i> Inventario</a>
+      <a href="scanner.html"><i class="fa-solid fa-camera"></i> Escáner AR</a>
+      <a href="qrs.html"><i class="fa-solid fa-qrcode"></i> QRs</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <section class="hero">
+      <h1>Inventario Inteligente con Realidad Aumentada</h1>
+      <p>Localiza stock, detalles técnicos y precios al instante. Busca por código, nombre o activa la cámara para escanear en tiempo real.</p>
+      
+      <div class="action-bar">
+        <a href="scanner.html" class="btn btn-primary">
+          <i class="fa-solid fa-camera"></i> Abrir Escáner AR Móvil
+        </a>
+        <a href="qrs.html" class="btn btn-secondary">
+          <i class="fa-solid fa-print"></i> Ver / Imprimir QRs
+        </a>
+      </div>
+    </section>
+
+    <!-- Barra de búsqueda interactiva -->
+    <div class="search-box-wrapper">
+      <i class="fa-solid fa-magnifying-glass search-icon"></i>
+      <input type="text" id="searchInput" class="search-input" placeholder="Buscar por código (ej. ART-001), nombre o componente...">
+    </div>
+
+    <!-- Indicador de filtros y estadísticas -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 1.5rem;">
+      <h2 style="font-size: 1.25rem; font-weight:700;">Artículos Disponibles (<span id="totalCounter">0</span>)</h2>
+      <div id="loading" style="display:none; color:var(--accent-cyan); font-weight:600;">
+        <i class="fa-solid fa-spinner fa-spin"></i> Cargando inventario...
+      </div>
+    </div>
+
+    <!-- Grilla de Articulos -->
+    <div id="articulosGrid" class="grid-cards">
+      <!-- Inyectado dinamicamente con JS -->
+    </div>
+  </main>
+
+  <footer>
+    <p><strong>ART-scan</strong> - Sistema de Localización y RA para Industria 4.0</p>
+    <p>Desarrollado por: <strong>Valentin Garzaniti</strong> (<a href="mailto:valenxity@gmail.com">valenxity@gmail.com</a>)</p>
+  </footer>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,247 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ART-scan | Visor AR & Cámara</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- html5-qrcode para lectura robusta en navegador movil -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  <style>
+    body {
+      overflow-x: hidden;
+      background: #000;
+    }
+
+    .ar-viewport {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    #reader {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 1;
+    }
+
+    #reader video {
+      object-fit: cover !important;
+      width: 100% !important;
+      height: 100% !important;
+    }
+
+    /* Reticula HUD de Realidad Aumentada */
+    .ar-hud-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 10;
+      pointer-events: none;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      padding: 1.5rem;
+    }
+
+    .hud-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      pointer-events: auto;
+    }
+
+    .hud-reticle-box {
+      align-self: center;
+      width: 260px;
+      height: 260px;
+      border: 2px dashed rgba(6, 182, 212, 0.6);
+      border-radius: 20px;
+      position: relative;
+      box-shadow: 0 0 30px rgba(6, 182, 212, 0.2);
+      animation: pulseReticle 2s infinite ease-in-out;
+    }
+
+    .hud-corner {
+      position: absolute;
+      width: 25px;
+      height: 25px;
+      border-color: var(--accent-cyan);
+      border-style: solid;
+    }
+    .c-tl { top: -2px; left: -2px; border-width: 4px 0 0 4px; border-top-left-radius: 12px; }
+    .c-tr { top: -2px; right: -2px; border-width: 4px 4px 0 0; border-top-right-radius: 12px; }
+    .c-bl { bottom: -2px; left: -2px; border-width: 0 0 4px 4px; border-bottom-left-radius: 12px; }
+    .c-br { bottom: -2px; right: -2px; border-width: 0 4px 4px 0; border-bottom-right-radius: 12px; }
+
+    .scanning-line {
+      position: absolute;
+      width: 100%;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--accent-cyan), transparent);
+      box-shadow: 0 0 15px var(--accent-cyan);
+      top: 0;
+      animation: scanAnim 2.5s infinite linear;
+    }
+
+    @keyframes scanAnim {
+      0% { top: 0%; opacity: 0; }
+      15% { opacity: 1; }
+      85% { opacity: 1; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    @keyframes pulseReticle {
+      0%, 100% { transform: scale(1); opacity: 0.8; }
+      50% { transform: scale(1.02); opacity: 1; }
+    }
+
+    /* Tarjeta flotante interactiva de AR */
+    .ar-info-card {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(120%);
+      width: 90%;
+      max-width: 450px;
+      background: rgba(15, 23, 42, 0.92);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--accent-cyan);
+      box-shadow: 0 10px 35px rgba(0, 0, 0, 0.6), 0 0 25px rgba(6, 182, 212, 0.4);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      z-index: 25;
+      pointer-events: auto;
+      transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .ar-info-card.active {
+      transform: translateX(-50%) translateY(0%);
+    }
+
+    .ar-tag {
+      display: inline-block;
+      font-size: 0.75rem;
+      font-weight: 800;
+      color: var(--accent-cyan);
+      letter-spacing: 1px;
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+    }
+
+    .btn-close-card {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      background: rgba(255, 255, 255, 0.1);
+      border: none;
+      color: #fff;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .sim-selector {
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid var(--border-color);
+      color: #fff;
+      padding: 0.5rem 1rem;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      pointer-events: auto;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="ar-viewport">
+    <!-- Contenedor del video y camara -->
+    <div id="reader"></div>
+
+    <!-- HUD Realidad Aumentada -->
+    <div class="ar-hud-overlay">
+      <div class="hud-header">
+        <a href="index.html" class="btn btn-secondary" style="padding: 0.5rem 0.9rem; font-size: 0.85rem;">
+          <i class="fa-solid fa-arrow-left"></i> Volver
+        </a>
+
+        <!-- Selector para probar en PC/simulador sin necesidad de camara fisica -->
+        <select id="quickSimSelect" class="sim-selector">
+          <option value="">-- Simular artículo --</option>
+          <option value="ART-001">ART-001 Motor Siemens</option>
+          <option value="ART-002">ART-002 Sensor Omron</option>
+          <option value="ART-003">ART-003 PLC Schneider</option>
+          <option value="ART-004">ART-004 Válvula Festo</option>
+          <option value="ART-005">ART-005 Rodamiento SKF</option>
+          <option value="ART-006">ART-006 Variador WEG</option>
+        </select>
+      </div>
+
+      <div class="hud-reticle-box">
+        <div class="hud-corner c-tl"></div>
+        <div class="hud-corner c-tr"></div>
+        <div class="hud-corner c-bl"></div>
+        <div class="hud-corner c-br"></div>
+        <div class="scanning-line"></div>
+        <div style="position: absolute; bottom: 8px; width: 100%; text-align: center; font-size: 0.75rem; color: var(--accent-cyan); font-weight: 600; text-shadow: 0 1px 3px #000;">
+          APUNTE AL QR O PIEZA
+        </div>
+      </div>
+
+      <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; text-shadow: 0 2px 4px #000;">
+        <span id="scanStatus"><i class="fa-solid fa-crosshairs"></i> Buscando código en campo de visión...</span>
+      </div>
+    </div>
+
+    <!-- Tarjeta HUD Flotante AR con datos en tiempo real -->
+    <div id="arCard" class="ar-info-card">
+      <button id="closeCardBtn" class="btn-close-card"><i class="fa-solid fa-xmark"></i></button>
+      <span class="ar-tag"><i class="fa-solid fa-layer-group"></i> OBJETO IDENTIFICADO</span>
+      
+      <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:0.25rem;">
+        <h3 id="arNombre" style="font-size:1.25rem; font-weight:800; color:#fff;">-</h3>
+        <span id="arCodigo" class="card-code">-</span>
+      </div>
+
+      <p id="arDesc" style="color:var(--text-muted); font-size:0.85rem; margin: 0.6rem 0 1rem 0; line-height: 1.4;">-</p>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+        <div style="background: rgba(0,0,0,0.4); padding: 0.6rem; border-radius: 8px; border-left: 3px solid var(--accent-emerald);">
+          <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Stock Actual</div>
+          <div id="arStock" style="font-size: 1.1rem; font-weight: 800; color: #fff;">-</div>
+        </div>
+
+        <div style="background: rgba(0,0,0,0.4); padding: 0.6rem; border-radius: 8px; border-left: 3px solid var(--accent-blue);">
+          <div style="font-size: 0.7rem; color: var(--text-muted); text-transform: uppercase;">Precio Unitario</div>
+          <div id="arPrecio" style="font-size: 1.1rem; font-weight: 800; color: #fff;">-</div>
+        </div>
+      </div>
+
+      <div class="location-box" style="margin-bottom: 0;">
+        <div class="location-title"><i class="fa-solid fa-location-dot"></i> Ubicación Asignada</div>
+        <div class="location-val" style="font-size: 0.95rem;">
+          <span>Pasillo: <strong id="arPasillo">-</strong></span>
+          <span>Estante: <strong id="arEstante">-</strong></span>
+          <span>Nivel: <strong id="arNivel">-</strong></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/scanner.js"></script>
+</body>
+</html>

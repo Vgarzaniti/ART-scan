@@ -1,0 +1,123 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ART-scan | Etiquetas y Códigos QR</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    .qr-card-item {
+      background: #ffffff;
+      color: #0f172a;
+      border-radius: var(--radius-md);
+      padding: 1.25rem;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+      page-break-inside: avoid;
+    }
+
+    .qr-img {
+      width: 180px;
+      height: 180px;
+      margin: 0.75rem 0;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 4px;
+    }
+
+    @media print {
+      header, .action-bar, footer, .search-box-wrapper {
+        display: none !important;
+      }
+      body {
+        background: #fff !important;
+        color: #000 !important;
+      }
+      .grid-cards {
+        grid-template-columns: repeat(3, 1fr) !important;
+        gap: 1rem !important;
+      }
+      .qr-card-item {
+        border: 1px dashed #64748b;
+        box-shadow: none;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <a href="index.html" class="brand">
+      <i class="fa-solid fa-cube text-cyan"></i>
+      <span>ART-scan</span>
+      <span class="brand-badge">Industria 4.0</span>
+    </a>
+    <nav>
+      <a href="index.html"><i class="fa-solid fa-warehouse"></i> Inventario</a>
+      <a href="scanner.html"><i class="fa-solid fa-camera"></i> Escáner AR</a>
+      <a href="qrs.html" class="active"><i class="fa-solid fa-qrcode"></i> QRs</a>
+    </nav>
+  </header>
+
+  <main class="container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 2rem; flex-wrap:wrap; gap:1rem;">
+      <div>
+        <h1 style="font-size:2rem; font-weight:800;">Etiquetas de Escaneo y QRs</h1>
+        <p style="color:var(--text-muted);">Escanea estos códigos directamente con la cámara de tu celular en <a href="scanner.html" style="color:var(--accent-cyan);">Escáner AR</a> para probar la detección instantánea.</p>
+      </div>
+      <div>
+        <button onclick="window.print()" class="btn btn-primary">
+          <i class="fa-solid fa-print"></i> Imprimir Etiquetas
+        </button>
+      </div>
+    </div>
+
+    <div id="qrsContainer" class="grid-cards">
+      <!-- Se llena dinamicamente con JS -->
+    </div>
+  </main>
+
+  <footer>
+    <p><strong>ART-scan</strong> - Sistema de Localización y RA para Industria 4.0</p>
+    <p>Desarrollado por: <strong>Valentin Garzaniti</strong> (<a href="mailto:valenxity@gmail.com">valenxity@gmail.com</a>)</p>
+  </footer>
+
+  <script>
+    async function cargarEtiquetas() {
+      const container = document.getElementById("qrsContainer");
+      try {
+        const resp = await fetch("/api/articulos");
+        const data = await resp.json();
+
+        container.innerHTML = "";
+
+        for (const item of data.datos) {
+          const qrResp = await fetch(`/api/qr/${encodeURIComponent(item.codigo)}`);
+          const qrData = await qrResp.json();
+
+          const card = document.createElement("div");
+          card.className = "qr-card-item";
+          card.innerHTML = `
+            <span style="font-family:monospace; font-weight:800; font-size:1.1rem; color:#0369a1;">${item.codigo}</span>
+            <img src="${qrData.qrDataUrl}" alt="QR ${item.codigo}" class="qr-img" />
+            <h4 style="font-size:0.95rem; font-weight:700; margin-bottom:0.25rem;">${item.nombre}</h4>
+            <p style="font-size:0.8rem; color:#64748b; margin-bottom:0.5rem;">Ubicación: Pasillo ${item.pasillo || "-"} | Est. ${item.estante || "-"}</p>
+            <a href="scanner.html?codigo=${encodeURIComponent(item.codigo)}" target="_blank" style="font-size:0.75rem; color:#0284c7; text-decoration:none; font-weight:600;">
+              Probar en Visor &rarr;
+            </a>
+          `;
+          container.appendChild(card);
+        }
+      } catch (err) {
+        container.innerHTML = `<p style="color:red;">Error cargando etiquetas: ${err.message}</p>`;
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", cargarEtiquetas);
+  </script>
+</body>
+</html>
