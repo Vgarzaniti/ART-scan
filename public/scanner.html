@@ -3,13 +3,17 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ART-scan | Visor AR & Cámara</title>
+  <title>ART-scan | Visor AR Multi-Modo</title>
   <link rel="stylesheet" href="css/styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <!-- Motor 1: Lector QR de alta velocidad -->
   <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
-  <!-- TensorFlow.js y MobileNet para reconocimiento directo de objetos -->
+  
+  <!-- Motor 2: IA TensorFlow.js MobileNet -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@latest"></script>
+
   <style>
     body, html {
       margin: 0;
@@ -45,6 +49,10 @@
       object-fit: cover !important;
     }
 
+    #photoCompareCanvas {
+      display: none;
+    }
+
     .ar-hud-overlay {
       position: absolute;
       top: 0;
@@ -66,25 +74,43 @@
       align-items: center;
       pointer-events: auto;
       gap: 0.5rem;
+      flex-wrap: wrap;
     }
 
-    .mode-indicator {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid var(--accent-cyan);
-      color: #fff;
+    .mode-tabs {
+      display: flex;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: 999px;
+      padding: 3px;
+      gap: 2px;
+    }
+
+    .mode-tab-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
       font-size: 0.75rem;
       font-weight: 700;
-      padding: 0.3rem 0.6rem;
+      padding: 0.35rem 0.65rem;
       border-radius: 999px;
+      cursor: pointer;
       display: flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.3rem;
+      transition: all 0.2s;
+    }
+
+    .mode-tab-btn.active {
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+      color: #fff;
+      box-shadow: 0 0 12px rgba(6, 182, 212, 0.4);
     }
 
     .hud-reticle-box {
       align-self: center;
-      width: 250px;
-      height: 250px;
+      width: 260px;
+      height: 260px;
       border: 2px dashed rgba(6, 182, 212, 0.6);
       border-radius: 20px;
       position: relative;
@@ -120,21 +146,16 @@
       100% { top: 100%; opacity: 0; }
     }
 
-    .permission-modal {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(15, 23, 42, 0.95);
-      border: 1px solid var(--accent-cyan);
-      border-radius: var(--radius-lg);
-      padding: 1.5rem;
+    .telemetry-banner {
       text-align: center;
-      z-index: 50;
-      width: 85%;
-      max-width: 360px;
-      pointer-events: auto;
-      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+      color: #fff;
+      font-size: 0.8rem;
+      padding: 0.6rem 1rem;
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.5);
     }
 
     .ar-info-card {
@@ -185,14 +206,21 @@
       justify-content: center;
     }
 
-    .sim-selector {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid var(--border-color);
-      color: #fff;
-      padding: 0.4rem 0.6rem;
-      border-radius: var(--radius-md);
-      font-size: 0.8rem;
-      max-width: 150px;
+    .permission-modal {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid var(--accent-cyan);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      text-align: center;
+      z-index: 50;
+      width: 85%;
+      max-width: 360px;
+      pointer-events: auto;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
     }
   </style>
 </head>
@@ -200,6 +228,7 @@
 
   <div class="ar-viewport">
     <div id="reader"></div>
+    <canvas id="photoCompareCanvas" width="128" height="128"></canvas>
 
     <div id="cameraPrompt" class="permission-modal" style="display:none;">
       <i class="fa-solid fa-camera" style="font-size: 2.5rem; color: var(--accent-cyan); margin-bottom: 1rem;"></i>
@@ -212,23 +241,25 @@
       </button>
     </div>
 
+    <!-- HUD AR Overlay -->
     <div class="ar-hud-overlay">
       <div class="hud-header">
         <a href="index.html" class="btn btn-secondary" style="padding: 0.4rem 0.7rem; font-size: 0.8rem;">
           <i class="fa-solid fa-arrow-left"></i>
         </a>
 
-        <div class="mode-indicator" id="aiModeIndicator">
-          <i class="fa-solid fa-brain" style="color:var(--accent-cyan);"></i> IA Visión + QR
+        <!-- Selector de Modos de Escaneo -->
+        <div class="mode-tabs">
+          <button id="modeFotoBtn" class="mode-tab-btn active" title="Reconoce por la forma y foto exacta de tus cosas">
+            <i class="fa-solid fa-image"></i> Foto Real
+          </button>
+          <button id="modeQrBtn" class="mode-tab-btn" title="Escaneo por código QR ultra veloz">
+            <i class="fa-solid fa-qrcode"></i> Código QR
+          </button>
+          <button id="modeIaBtn" class="mode-tab-btn" title="IA MobileNet de clasificación">
+            <i class="fa-solid fa-brain"></i> IA
+          </button>
         </div>
-
-        <select id="quickSimSelect" class="sim-selector">
-          <option value="">Fijar objeto...</option>
-          <option value="ART-001">ART-001 Calculadora Casio</option>
-          <option value="ART-002">ART-002 Cargador Samsung USB-C</option>
-          <option value="ART-003">ART-003 Joystick PS4</option>
-          <option value="ART-004">ART-004 Auriculares Gamer</option>
-        </select>
       </div>
 
       <div class="hud-reticle-box">
@@ -239,11 +270,12 @@
         <div class="scanning-line"></div>
       </div>
 
-      <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; text-shadow: 0 2px 4px #000; padding: 0.5rem; background: rgba(0,0,0,0.6); border-radius: 8px;">
-        <span id="scanStatus"><i class="fa-solid fa-crosshairs"></i> Apunte al objeto o código QR...</span>
+      <div class="telemetry-banner">
+        <span id="scanStatus"><i class="fa-solid fa-crosshairs"></i> Apunte al objeto...</span>
       </div>
     </div>
 
+    <!-- Tarjeta flotante interactiva de AR -->
     <div id="arCard" class="ar-info-card">
       <button id="closeCardBtn" class="btn-close-card"><i class="fa-solid fa-xmark"></i></button>
       <span class="ar-tag" id="arTag"><i class="fa-solid fa-layer-group"></i> OBJETO IDENTIFICADO</span>
